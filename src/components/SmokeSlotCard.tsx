@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { SkillIcon } from "@/components/SkillIcon";
 import { useExpiryTts } from "@/hooks/useExpiryTts";
 import { useTick } from "@/hooks/useTick";
-import { SKILLS } from "@/lib/skills";
-import { deriveState, formatMMSS, remainingMillis } from "@/lib/time";
+import { SKILLS, smokeDurationSeconds } from "@/lib/skills";
+import { deriveState, formatMMSS, remainingMillis, serverNow } from "@/lib/time";
 import type { Slot } from "@/lib/types";
 import { useRoomStore } from "@/store/useRoomStore";
 
@@ -43,6 +43,17 @@ export function SmokeSlotCard({
   const finished = state === "finished";
   const skill = SKILLS[slot.skillType];
 
+  // 연막탄 전용: 쿨다운(maxDur, 600초)과 별개인 "지속 시간" 남은 값.
+  // idle 이면 레벨 기준 전체 지속 시간을, running 이면 startTs 기준 남은 시간을 표시한다.
+  const isSmoke = slot.skillType === "smoke";
+  const smokeDurMs = smokeDurationSeconds(slot.level) * 1000;
+  const durationRemaining =
+    slot.startTs == null ? smokeDurMs : smokeDurMs - (serverNow(clockOffset) - slot.startTs);
+  // 지속 효과가 살아있는 동안 마지막 10초 → 테두리 경고 깜빡임
+  const durationWarn =
+    isSmoke && slot.startTs != null && durationRemaining > 0 && durationRemaining <= 10_000;
+  const durationEnded = isSmoke && slot.startTs != null && durationRemaining <= 0;
+
   const onNickChange = (value: string) => {
     setNick(value);
     if (debounce.current) clearTimeout(debounce.current);
@@ -58,6 +69,7 @@ export function SmokeSlotCard({
 
   return (
     <div
+      className={durationWarn ? "smoke-duration-warn" : undefined}
       style={{
         position: "relative",
         width: 260,
@@ -138,16 +150,45 @@ export function SmokeSlotCard({
           title="드래그하여 이동"
           style={{
             flex: 1,
-            fontFamily: "var(--font-mono)",
-            fontSize: 32,
-            fontWeight: "bold",
-            color: finished ? "var(--timer-red)" : "var(--timer-green)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
             cursor: "grab",
             userSelect: "none",
-            textAlign: "center",
           }}
         >
-          {formatMMSS(remaining)}
+          <div
+            style={{
+              fontFamily: "var(--font-mono)",
+              fontSize: 32,
+              fontWeight: "bold",
+              lineHeight: 1,
+              color: finished ? "var(--timer-red)" : "var(--timer-green)",
+            }}
+          >
+            {formatMMSS(remaining)}
+          </div>
+          {/* 연막탄 전용: 쿨다운과 별개인 지속 시간(레벨별 31~60초). §1 알려진 이슈 대응 */}
+          {isSmoke && (
+            <div
+              title="연막 지속 시간 (레벨에 비례, 쿨다운과 별개)"
+              style={{
+                marginTop: 2,
+                fontFamily: "var(--font-mono)",
+                fontSize: 13,
+                fontWeight: "bold",
+                lineHeight: 1,
+                color: durationWarn
+                  ? "var(--timer-red)"
+                  : durationEnded
+                    ? "var(--text-dim)"
+                    : "var(--title)",
+              }}
+            >
+              지속 {formatMMSS(durationRemaining)}
+            </div>
+          )}
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
