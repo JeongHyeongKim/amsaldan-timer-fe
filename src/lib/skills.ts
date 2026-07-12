@@ -18,6 +18,12 @@ export function clampLevel(skillType: SkillType, level: number): number {
   return Math.max(1, Math.min(SKILLS[skillType].maxLevel, level));
 }
 
+// 연막탄(Smoke) 지속 시간(초). 쿨다운(maxDur, 고정 600초)과 별개로 연막 효과가
+// 유지되는 시간이며 레벨에 비례한다. Lv1 → 31초 … Lv30 → 60초 (= 30 + level).
+export function smokeDurationSeconds(level: number): number {
+  return 30 + clampLevel("smoke", level);
+}
+
 export function maxDurSeconds(skillType: SkillType, level: number): number {
   const lvl = clampLevel(skillType, level);
   switch (skillType) {

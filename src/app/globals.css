@@ -97,3 +97,22 @@ input[type="radio"] {
   width: 15px;
   height: 15px;
 }
+
+/*
+ * 연막(Smoke) 지속 시간이 10초 이하로 남았을 때 카드 테두리를 빨간색으로 깜빡여
+ * 효과 종료 임박을 경고한다 (spec_ko.md §1). 애니메이션 값은 인라인 border 색을 덮어쓴다.
+ */
+@keyframes smoke-duration-warn {
+  0%,
+  49% {
+    border-color: var(--finished-border);
+  }
+  50%,
+  100% {
+    border-color: var(--border);
+  }
+}
+
+.smoke-duration-warn {
+  animation: smoke-duration-warn 0.8s step-end infinite;
+}
